@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.1/dist/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+
+<body>
+    <h2>Chat Application</h2>
+    <div>
+        <input type="text" id="username" placeholder="Enter your name">
+    </div>
+    <div>
+        <input type="text" id="room" placeholder="Room number">
+        <button id="joinRoomBtn" onclick="joinRoom()">Join Room</button>
+        <button id="leaveRoomBtn" onclick="leaveRoom()">Leave Room</button>
+    </div>
+    <div>
+        <input type="text" id="msg" placeholder="Message..." />
+        <button id="sendMessageBtn" onclick="sendMessage()">Send Message</button>
+    </div>
+
+    <div>
+        <h3>Messages:</h3>
+        <ul id="messagesList"></ul>
+    </div>
+
+    <script>
+        const socket = io.connect('https://novelhouston.com/');
+        let room = '';
+        let username = '';
+
+        // Elements
+        const joinRoomBtn = document.getElementById('joinRoomBtn');
+        const leaveRoomBtn = document.getElementById('leaveRoomBtn');
+        const sendMessageBtn = document.getElementById('sendMessageBtn');
+        const msgInput = document.getElementById('msg');
+        const messagesList = document.getElementById('messagesList');
+        const usernameInput = document.getElementById('username');
+        const roomInput = document.getElementById('room');
+
+        // Join Room
+        function joinRoom() {
+            username = usernameInput.value.trim();
+            room = roomInput.value.trim();
+            if (room && username) {
+                socket.emit("join_room", { room, username });
+                console.log(`Joined room: ${room}`);
+                setMessages([]);
+            }
+        }
+
+        // Leave Room
+        function leaveRoom() {
+            if (room && username) {
+                socket.emit("leave_room", { room, username });
+                console.log(`Left room: ${room}`);
+                setMessages([]);
+                room = "";
+                username = "";
+                roomInput.value = "";
+                usernameInput.value = "";
+            }
+        }
+
+        // Send Message
+        function sendMessage() {
+            const msg = msgInput.value.trim();
+            if (msg && room && username) {
+                socket.emit('sendMessage', { msg, room, username });
+                console.log(`Sent message: ${msg}`);
+                msgInput.value = ''; 
+            }
+        }
+
+        // Display Messages
+        function setMessages(newMessages) {
+            messagesList.innerHTML = ''; 
+            newMessages.forEach(message => {
+                const li = document.createElement('li');
+                li.innerHTML = `<strong>${message.username}:</strong> ${message.msg} (Room: ${message.room})`;
+                messagesList.appendChild(li);
+            });
+        }
+
+        // Listen for received messages from the server
+        socket.on("receive_message", (data) => {
+            console.log("Received message:", data);
+            const newMessages = [{ username: data.username, msg: data.msg, room: data.room }];
+            setMessages(newMessages);
+        });
+
+        // Socket Event Listeners for Connection and Disconnect
+        socket.on('connect', () => {
+            console.log('Connected to server:', socket.id);
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+        });
+
+        // Add event listener for 'Enter' key to send the message
+        msgInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+
+</html>
